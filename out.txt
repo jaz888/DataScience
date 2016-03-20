@@ -1,0 +1,19 @@
+1. a) posts: 5757
+1. b) users: 38
+1. c) words: 1395722
+1. d):
+	Consulting 1
+	Law 2
+	Media 1
+	indUnk 14
+	Arts 1
+	Fashion 1
+	Libraries 1
+	sportation 1
+	Student 8
+	Internet 3
+	nResources 1
+	Education 2
+	Technology 1
+	RealEstate 1
+2. a) 1401402 : 463: 0.000369757105296 , 963: 0.000133454127902 , 981: 9.47844312536e-05
