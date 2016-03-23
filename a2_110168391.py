@@ -6,6 +6,7 @@ from happierfuntokenizing import Tokenizer
 import csv
 import numpy as np
 import sys
+import math
 
 #
 # def run_proc(file, q):
@@ -46,9 +47,11 @@ files_list = glob.glob('/Users/jieaozhu/Documents/DataScience/Differential_Topic
 user_word_count = {}
 posts_count = 0
 words_count = 0
-industry = {}
+industries = {}
 ages = {}
 genders = {}
+user_industry_map = {}
+sample_size = 0
 
 user_id_re = re.compile(r'(?<=/)(\d{3,8})(?=.)')
 
@@ -63,13 +66,15 @@ for file in files_list:
     user_age = int(user_age_re.findall(file)[0])
     user_gender = 0 if user_gender_re.findall(file)[0] == 'female' else 1
     user_industry = user_industry_re.findall(file)[0]
-    if user_industry in industry:
-        industry[user_industry] += 1
+    if user_industry in industries:
+        industries[user_industry] += 1
     else:
-        industry[user_industry] = 1
+        industries[user_industry] = 1
     user_word_count[user_id] = {}
     ages[user_id] = user_age
     genders[user_id] = user_gender
+    user_industry_map[user_id] = user_industry
+    sample_size += 1
     f = open(file, 'r')
     posts = post_re.findall(f.read())
     for p in posts:
@@ -120,8 +125,8 @@ print '1. a) posts:',posts_count
 print '1. b) users:',len(user_word_count)
 print '1. c) words:',words_count
 print '1. d):'
-for x in industry:
-    print '\t',x, industry[x]
+for x in industries:
+    print '\t',x, industries[x]
 
 
 
@@ -222,4 +227,64 @@ for topic_id in topics:
         X_row_id += 1
     res = np.dot(np.dot(np.linalg.inv(np.dot(X.transpose(), X)),X.transpose()),Y)
     ageY_genderX1_topicX2_coefficients[topic_id] = (res[0][0], res[1][0], res[2][0])
-print ageY_genderX1_topicX2_coefficients
+#print ageY_genderX1_topicX2_coefficients
+
+#########################################################
+#########################################################
+
+for industry in industries:
+    if industries[industry] > 3 and industry != 'indUnk':
+        Y = np.arange(sample_size, dtype=np.float).reshape(sample_size, 1)
+        Y_row_id = 0
+        for user_id in user_topic_prob:
+            Y[Y_row_id][0] = 1 if user_industry_map[user_id] == industry else 0
+            Y_row_id += 1
+        # generate matrix X
+        X_row_id = 0
+        X = np.arange(sample_size*4, dtype=np.float).reshape(sample_size, 4)
+        for user_id in user_topic_prob:
+            X[X_row_id][0] = 1.0 # beta0
+            X[X_row_id][1] = 0.0 # topic
+            X[X_row_id][2] = ages[user_id] # age
+            X[X_row_id][3] = genders[user_id]
+            X_row_id += 1
+        W = np.arange(sample_size * sample_size, dtype=np.float).reshape(sample_size, sample_size)
+        for i in range(sample_size):
+            for j in range(sample_size):
+                W[i][j] = 0.0
+        Z = np.arange(sample_size, dtype=np.float).reshape(sample_size, 1)
+        for topic in topics:
+            # change topic column in matrix X
+            X_row_id = 0
+            for user_id in user_topic_prob:
+                X[X_row_id][1] = 0.0 if topic not in user_topic_prob[user_id] else user_topic_prob[user_id][topic] # topic
+                X_row_id += 1
+            # calculate Pi and matrix W
+            old_betas = [0.0,0.0,0.0,0.0]
+            new_betas = [0.0,0.0,0.0,0.0]
+            enter = False
+            while (enter == False or (math.fabs(new_betas[0]-old_betas[0]) > 0.001
+                or math.fabs(new_betas[1]-old_betas[1]) > 0.001
+                or math.fabs(new_betas[2]-old_betas[2]) > 0.001
+                or math.fabs(new_betas[3]-old_betas[3]) > 0.001)):
+                enter = True
+                #store old betas
+                old_betas[0] = new_betas[0]
+                old_betas[1] = new_betas[1]
+                old_betas[2] = new_betas[2]
+                old_betas[3] = new_betas[3]
+                for i in range(sample_size):
+                    e_power = math.exp(old_betas[0]+old_betas[1]*X[i][1]+old_betas[2]*X[i][2]+old_betas[3]*X[i][3])
+                    p_i = 0.0
+                    if Y[i][0] == 1:
+                        p_i = e_power / (1.0 + e_power)
+                    else:
+                        p_i = 1.0 / (1.0+e_power)
+                    #print p_i
+                    logit_p_i = math.log(p_i/(1.0-p_i))
+                    W[i,i] = p_i
+                    Z[i][0] = logit_p_i + ((Y[i] - p_i) / (p_i * (1-p_i)))
+                beta_matrix = np.dot(np.dot(np.dot(np.linalg.inv(np.dot(np.dot(X.transpose(),W), X)),X.transpose()),W),Z)
+                print beta_matrix[0][0],beta_matrix[1][0],beta_matrix[2][0],beta_matrix[3][0]
+    else:
+        pass
