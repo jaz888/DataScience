@@ -8,7 +8,10 @@ import sys
 import math
 import operator
 import matplotlib.pyplot as plt
-
+# print sys.argv[0]
+# print sys.argv[1]
+# print sys.argv[2]
+# print sys.argv[3]
 #
 # def run_proc(file, q):
 #     user_id_re = re.compile(r'(?<=/)(\d{3,8})(?=.)')
@@ -42,7 +45,7 @@ import matplotlib.pyplot as plt
 
 
 tok = Tokenizer(preserve_case=False)
-files_list = glob.glob('/Users/jieaozhu/Documents/DataScience/Differential_Topic_Analysis/samples_500/*.xml')
+files_list = glob.glob(sys.argv[1]+'/*.xml')
 
 
 user_word_count = {}
@@ -146,7 +149,7 @@ word_topic_prob = {}
 user_word_prob = {}
 user_topic_prob = {}
 topics = {}
-with open('wwbpFBtopics_condProb.csv', 'rb') as csvfile:
+with open(sys.argv[2], 'rb') as csvfile:
     reader = csv.reader(csvfile)
     #skip header
     next(reader)
@@ -400,7 +403,7 @@ fig.suptitle('bold figure suptitle', fontsize=14, fontweight='bold')
 
 freqs_dict = {}
 
-with open('2000topics.top20freqs.keys.csv', 'rb') as csvfile:
+with open(sys.argv[3], 'rb') as csvfile:
     reader = csv.reader(csvfile)
     for row in reader:
         # term, topic_id, weight
@@ -459,7 +462,7 @@ for industry in q4_res:
             x_neg_axis = x
         if y < y_neg_axis:
             y_neg_axis = y
-        ax.text(x, y, freqs_dict[topic])
+        ax.text(x, y, freqs_dict[topic], fontsize=8)
 
     for i in range(5):
         x = q4_res[industry][-1-i][2]
@@ -483,9 +486,10 @@ for industry in q4_res:
             x_neg_axis = x
         if y < y_neg_axis:
             y_neg_axis = y
-        ax.text(x, y, freqs_dict[topic],color='blue')
+        ax.text(x, y, freqs_dict[topic],color='blue',fontsize=8)
 
     subplot_id += 1
     ax.axis([x_neg_axis, x_pos_axis+1, y_neg_axis, y_pos_axis+1])
-
-plt.show()
+#
+# plt.show()
+plt.savefig('5a_industry_plots.png')
