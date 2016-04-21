@@ -55,8 +55,8 @@ for i in range(10):
     end = i * partition + partition
     sub_X_testing = X_matrix.iloc[index[start:end]]
     sub_Y_testing = Y_vector.iloc[index[start:end]]
-    sub_X_training = X_matrix.drop(X_matrix.index[range(start, end+1)])
-    sub_Y_training = Y_vector.drop(Y_vector.index[range(start, end+1)])
+    sub_X_training = X_matrix.drop(X_matrix.index[index[start:end]])
+    sub_Y_training = Y_vector.drop(Y_vector.index[index[start:end]])
     sub_X_training = preprocessing.scale(sub_X_training)
     sub_Y_training = preprocessing.scale(sub_Y_training)
     sub_X_testing = preprocessing.scale(sub_X_testing)
@@ -76,69 +76,82 @@ pca = PCA(n_components=3)
 pca.fit(preprocessing.scale(X_matrix))
 print "4. Percentage variance explained of first three components: ", pca.explained_variance_ratio_
 
+# reduce the data to 100 rows
 
+
+# X_matrix = X_matrix.iloc[index[0:101]]
+# Y_vector = Y_vector.iloc[index[0:101]]
+# index = [x for x in range(X_matrix.shape[0])]
+# random.shuffle(index)
+
+error_pca = 99999.0
+error_l2 = 99999.0
+error_l1 = 99999.0
+comp = 0
 for c in range(1,44):
-    print 'c======',c
     pca = PCA(n_components=c)
     pca.fit(preprocessing.scale(X_matrix))
     component_matrix = pd.DataFrame(pca.fit_transform(preprocessing.scale(X_matrix)))
     partition = component_matrix.shape[0] / 10
-    error_pca = 0.0
+    Y_vector = pd.DataFrame(preprocessing.scale(Y_vector))
+
     clf = linear_model.LinearRegression()
+    e1 = 0.0
     for i in range(10):
         start = i * partition
-        end = i * partition + partition
+        end = i * partition + partition - 1
         sub_X_testing = component_matrix.iloc[index[start:end]]
         sub_Y_testing = Y_vector.iloc[index[start:end]]
-        sub_X_training = component_matrix.drop(component_matrix.index[range(start, end+1)])
-        sub_Y_training = Y_vector.drop(Y_vector.index[range(start, end+1)])
-        sub_X_training = preprocessing.scale(sub_X_training)
-        sub_Y_training = preprocessing.scale(sub_Y_training)
-        sub_X_testing = preprocessing.scale(sub_X_testing)
-        sub_Y_testing = preprocessing.scale(sub_Y_testing)
+        sub_X_training = component_matrix.drop(component_matrix.index[index[start:end]])
+        sub_Y_training = Y_vector.drop(Y_vector.index[index[start:end]])
+        clf = linear_model.LinearRegression()
         clf.fit(sub_X_training, sub_Y_training)
         square = (clf.predict(sub_X_testing) - sub_Y_testing) ** 2
-        square = square.sum() / len(square)
-        error_pca += square
-    error_pca /= 10
-    print "5. a) principal components regression mse: %f" % error_pca
+        square = square.sum()[0] / len(square)
+        e1 += square
+    e1 /= 10
 
-    error_l2 = 0.0
-    clf = linear_model.Ridge (alpha = 0.001)
-    for i in range(10):
-        start = i * partition
-        end = i * partition + partition
-        sub_X_testing = component_matrix.iloc[index[start:end]]
-        sub_Y_testing = Y_vector.iloc[index[start:end]]
-        sub_X_training = component_matrix.drop(component_matrix.index[range(start, end+1)])
-        sub_Y_training = Y_vector.drop(Y_vector.index[range(start, end+1)])
-        sub_X_training = preprocessing.scale(sub_X_training)
-        sub_Y_training = preprocessing.scale(sub_Y_training)
-        sub_X_testing = preprocessing.scale(sub_X_testing)
-        sub_Y_testing = preprocessing.scale(sub_Y_testing)
-        clf.fit(sub_X_training, sub_Y_training)
-        square = (clf.predict(sub_X_testing) - sub_Y_testing) ** 2
-        square = square.sum() / len(square)
-        error_l2 += square
-    error_l2 /= 10
-    print "5. b) L2 regularized  mse: %f" % error_l2
 
-    error_l1 = 0.0
-    clf = linear_model.Lasso(alpha = 0.001)
+
+    e2 = 0.0
+    clf = linear_model.Ridge (alpha = 0.01)
     for i in range(10):
         start = i * partition
-        end = i * partition + partition
+        end = i * partition + partition - 1
         sub_X_testing = component_matrix.iloc[index[start:end]]
         sub_Y_testing = Y_vector.iloc[index[start:end]]
-        sub_X_training = component_matrix.drop(component_matrix.index[range(start, end+1)])
-        sub_Y_training = Y_vector.drop(Y_vector.index[range(start, end+1)])
-        sub_X_training = preprocessing.scale(sub_X_training)
-        sub_Y_training = preprocessing.scale(sub_Y_training)
-        sub_X_testing = preprocessing.scale(sub_X_testing)
-        sub_Y_testing = preprocessing.scale(sub_Y_testing)
+        sub_X_training = component_matrix.drop(component_matrix.index[index[start:end]])
+        sub_Y_training = Y_vector.drop(Y_vector.index[index[start:end]])
+        clf = linear_model.Ridge (alpha = 0.01)
         clf.fit(sub_X_training, sub_Y_training)
         square = (clf.predict(sub_X_testing) - sub_Y_testing) ** 2
-        square = square.sum() / len(square)
-        error_l1 += square
-    error_l1 /= 10
-    print "5. c) L1 regularized  mse: %f" % error_l1
+        square = square.sum()[0] / len(square)
+        e2 += square
+    e2 /= 10
+
+
+    e3 = 0.0
+    clf = linear_model.Lasso(alpha = 0.01)
+    for i in range(10):
+        start = i * partition
+        end = i * partition + partition - 1
+        sub_X_testing = component_matrix.iloc[index[start:end]]
+        sub_Y_testing = Y_vector.iloc[index[start:end]]
+        sub_X_training = component_matrix.drop(component_matrix.index[index[start:end]])
+        sub_Y_training = Y_vector.drop(Y_vector.index[index[start:end]])
+        clf = linear_model.Lasso(alpha = 0.01)
+        clf.fit(sub_X_training, sub_Y_training)
+        square = (pd.DataFrame(clf.predict(sub_X_testing)) - sub_Y_testing) ** 2
+        square = square.sum()[0] / len(square)
+        e3 += square
+    e3 /= 10
+
+    if e1 < error_pca:
+        comp = c
+        error_pca = e1
+        error_l2 = e2
+        error_l1 = e3
+
+print "5. a) principal components regression mse: ", error_pca
+print "5. b) L2 regularized  mse: ", error_l2
+print "5. c) L1 regularized  mse: ",error_l1
